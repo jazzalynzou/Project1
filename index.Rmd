@@ -19,14 +19,17 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+Jazzalyn Zou 
 
 #### Introduction 
 
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
+The two data sets I chose were Body and Workout. In my Body data set, I downloaded data from my apple watch of my body during a workout which includes information about my heart rates, basal energy, and stand time. For my Workout data set, I also downloaded it from my apple watch and this includes the types of workouts I do and how long I do them for, heart rates, total and active energy, distances walked and steps walked.I picked these data sets because I enjoy working out and being active so being able to work with these number and analyze my own information is extremely interesting to me. 
 
 ```{R}
-# read your datasets in here, e.g., with read_csv()
+library(tidyverse)
+Body <- read_csv("Body.csv")
+Workout <- read_csv("Workout.csv")
+
 
 ```
 
@@ -35,52 +38,96 @@ Paragraph or two introducing your datasets and variables, why they are interesti
 If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
 
 ```{R}
-# your tidying code (if applicable; can also wait until wrangling section)
+Workout %>% pivot_wider(names_from = Type, values_from = "Duration") -> Workout
+
+glimpse(Body)
+glimpse(Workout)
+
+
 ```
 
-    
+All my workouts were listed under one column and instead I wanted to seperate them based on the type of workout. I did this pivoting wider. 
+
 #### Joining/Merging
 
 ```{R}
-# your joining code
+Workout %>% rename("Date" = Start) %>% select(-End) %>% mutate_at(c("Date"), as.character) %>% mutate_at("Date", str_replace," \\d\\d:\\d\\d:\\d\\d", "") ->Workout
 
-# your joining code
+Body %>% mutate_at(c("Date"), as.character) -> Body
+
+Body %>% summarize(n(), n_distinct(Date))
+Workout %>% summarize(n(), n_distinct(Workout))
+full_join(Body, Workout, by = "Date") -> Combined
+anti_join(Body, Workout, by = "Date")
+inner_join(Body, Workout, by = "Date")
+#anti_join(Workout, Body, by = "Date")
 ```
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+In order to join these I first renamed the two dates with the same name and them changed them into the same variable type. One was numeric first and the other was POSIXct and I changed them both into character types so they could be joined. In addition, I changed the POSIXct type from Workout and removed the time stamps so the formating matched the format of Body. I then conducted a full join which resulted in 107 rows in my new combined data set.I conducted a full join because I wanted to keep all my original data and not remove anything as a result no observations were dropped. There were originally 89 rows in the Body Data set with 89 unique data IDs and 77 rows with 77 unique IDs in the Workout Data set. I conducted an anti join and saw that there were 30 rows that appeared in Body and not in Workout. Finally, I conducted an inner join and saw that there were 77 rows that that the data sets have in common. 
 
-####  Wrangling
+####  Wrangling 
 
 ```{R}
-# your wrangling code
+Combined %>% select(-Step_Cadence, -Swimming_Stroke_Count, -Swim_Stoke_Cadence, -Flights_Climbed, -Elevation_Ascended, -Elevation_Descended) -> Combined 
 
-# your wrangling code
+Combined <- Combined %>% mutate(Heart_Rate_Range = Heart_Rate_Max-Heart_Rate_Min) 
 
-# your wrangling code
+Combined %>% filter(Basal_Energy_Burned == max(Basal_Energy_Burned)) %>% select(-Other)
+
+Combined %>% arrange(desc(Heart_Rate_Max))
+
+Combined %>% group_by(Stand_Time) %>% summarize(n=n())
+
+Combined %>% mutate(Date = str_replace(Date,"2021-", ""))
+
+Combined %>% summarize(mean(Stand_Time, na.rm = T), sd(Stand_Time, na.rm = T), var(Stand_Time, na.rm = T), quantile(Stand_Time, na.rm = T), min(Stand_Time, na.rm =T), max(Stand_Time, na.rm =T), n_distinct(Stand_Time), n())
+
+Combined %>% summarize(mean(Resting_Heart_Rate, na.rm = T), sd(Resting_Heart_Rate, na.rm = T), var(Resting_Heart_Rate, na.rm = T), quantile(Resting_Heart_Rate, na.rm = T), min(Resting_Heart_Rate, na.rm =T), max(Resting_Heart_Rate, na.rm =T), n_distinct(Resting_Heart_Rate), n())
+
+Combined %>% summarize_all(function(x)sum(is.na(x)))
+
+Combined <- Combined %>% group_by(Active_Energy) %>% mutate(Active_Energy_Scale = ifelse(Active_Energy>300, "high", ifelse(Active_Energy<=300 & 200<=Active_Energy, "med", "low")))
+
+Combined %>% group_by(Active_Energy_Scale) %>% summarize(n())
+
+minutes_to_hours <- function(Stand_Time) {
+  Stand_Time_Hours <- (Stand_Time/60)
+  return(Stand_Time_Hours)
+}
+Combined %>% mutate(Stand_Time = minutes_to_hours(Stand_Time))
+
+library(knitr)
+library(gt)
+Combined %>% group_by(Active_Energy_Scale) %>% summarize_at(c(6,10), .funs=list(mean=mean, sd=sd)) %>% pivot_wider() -> table1
+table1 %>% kable()
+table1 %>% gt %>% tab_header(title=md("**Summary Active Energy Scale**"))
+
 ```
+I first used select to remove a couple of columns that had very little information which mostly had information about exercises I don't commonly do I then used mutate to create a new column called Heart_Rate_Range that calculated the range between my Maximum Heart Rate and my Minimum Heart Rate. I then created a function that found my maximum basal energy burned which was 1647 calories in a day. I also removed the column Other in my dataset since it provided very little information about what workout I did and the time I did it for. Next I found my maximum heart rate during any workout which was 193 bpm. Next, I summarized my stand times to determine how many unqiue stand times I had and I had 75 unique times. Finally I removed "2021-" from the dates since I thought they were redundant.  
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
-
+Next, I created summary statistics for my variables. For Stand Time, I had a mean stand time of 118.35 with standard deviation of 55.93 minutes, with an IQR of min = 7 minutes, Q1 of 73 minutes, Median of 118 minutes, Q3 of 159 minutes and maximum of 243 minutes. For my resting heart rate, I had a mean of 60.84 bpm with standard deviation 6.54 bpm, with an IQR of min = 53 bpm, Q1 of 57 bpm, median of 59 bpm, Q3 63 bpm and a maximum of 86 bpm. There were 22 distinct rates for my resting heart rate. Next, I summarized the NAs to determine how many NAs were in each column. There were minimums of 0 in Date and Basal Energy Burned and maximum NAs in racquetball and stair climbing. I then grouped my numeric Active Calories into categories low, medium, high, which groups calories burned during an exercise above 300 as high, calories burned between 200-300 as medium and below 200 as low. After that, I summarized and saw that there were 10 distinct workouts that were high calories burned, 39 that were medium, 28 that were low, and 30 NAs. In addition, I changed my stand time from minutes to hours by using a function that I created and added it to the data set. 
 
 #### Visualizing
 
 ```{R}
-# your plot 1
+Combined %>% ggplot(aes(x=Active_Energy, y= Avg_Heart_Rate)) + geom_point(aes(color = Active_Energy_Scale))+geom_smooth(method="lm") +xlab("Active Energy (cal)") +ylab("Average Heart Rate (bpm)") + ggtitle ("Relationship Between Average Heart Rate and Active Energy") + theme_minimal() + scale_x_continuous(breaks = seq(0,400,75)) + scale_y_continuous(breaks = seq(50,200,10)) 
+
 ```
 
-Your discussion of plot 1
+This plot visualizes the relationship between Active Energy (cal) burned during an excercise and Average Heart Rate (bpm). I also color coded the points by my Active Energy Scale. I theorized a direct relationship between the two variables so that the more energy burned during an exercise the higher my average heart rate was. This is confirmed in my graph with the upward trend of my geom_smooth() which shows the trend line of the points. However, we also do see a lot of variation among the points especially in the low and medium range. 
 
 ```{R}
-# your plot 2
+
+Combined %>% ggplot(aes(x=Stand_Time)) + geom_histogram(aes(y =..density..,), bins =15, color = "black", fill = "light blue") + geom_density(color = "purple") + xlab("Stand Time (minutes)") + scale_x_continuous(breaks = seq(0,250,25))  + ggtitle ("Histogram of Stand Time") + theme_light()
+
 ```
 
-Your discussion of plot 2
+This histogram visualizes the distribution of my stand times. Looking at my graph, my most frequent stand time is 75-100 minutes a day and my lowest are at the extremes around 0 minutes and 250 minutes. In addition, my graph is slightly bimodal and has a big peak at ~80 minutes and a smaller peak at ~150 minutes. 
 
 ```{R}
-# your plot 3
+Combined %>% drop_na(Active_Energy_Scale) %>% ggplot(aes(x = Active_Energy_Scale, y=Active_Energy)) + geom_bar(aes(y=Active_Energy, fill = Active_Energy_Scale), stat = "summary", fun = mean) + geom_errorbar(stat="summary", fun.data=mean_se, width=0.5) + xlab("Active Energy Scale") + ylab("Active Energy (cal)") + ggtitle("Active Energy Bar Graph") + scale_y_continuous(breaks = seq(0,400,50)) + theme_bw()
 ```
-
-Your discussion of plot 3
+In this graph, I grouped my Active Energies in groups of high (300+ calories burned), medium (200-300 calories burned) and low (less than 200 calories burned) and visualized the means of each category. Looking at my graph, I can see that for a high level workout, I burn on average ~330 calories, for a medium level workout, I burned on average ~240 calories, and for a low level workout, I burn on average ~115 calories. In addition, looking at the error bars I can see that for high workouts, there is the highest uncertainty and for medium workouts, we have the lowest uncertainty. 
 
 #### Concluding Remarks
 

@@ -126,6 +126,7 @@ This histogram visualizes the distribution of my stand times. Looking at my grap
 
 ```{R}
 Combined %>% drop_na(Active_Energy_Scale) %>% ggplot(aes(x = Active_Energy_Scale, y=Active_Energy)) + geom_bar(aes(y=Active_Energy, fill = Active_Energy_Scale), stat = "summary", fun = mean) + geom_errorbar(stat="summary", fun.data=mean_se, width=0.5) + xlab("Active Energy Scale") + ylab("Active Energy (cal)") + ggtitle("Active Energy Bar Graph") + scale_y_continuous(breaks = seq(0,400,50)) + theme_bw()
+
 ```
 In this graph, I grouped my Active Energies in groups of high (300+ calories burned), medium (200-300 calories burned) and low (less than 200 calories burned) and visualized the means of each category. Looking at my graph, I can see that for a high level workout, I burn on average ~330 calories, for a medium level workout, I burned on average ~240 calories, and for a low level workout, I burn on average ~115 calories. In addition, looking at the error bars I can see that for high workouts, there is the highest uncertainty and for medium workouts, we have the lowest uncertainty. 
 
